@@ -1,0 +1,42 @@
+version: 2.1
+
+jobs:
+  build-and-test:
+    docker:
+      - image: cimg/node:14.18.1
+    steps:
+      - checkout
+      - run:
+          name: update npm
+          command: "sudo npm install --unsafe-perm"
+      - restore_cache:
+          key: dependency-cache-{{ checksum "package-lock.json" }}
+      - run:
+          name: install dependencies
+          command: npm install
+      - save_cache:
+          key: dependency-cache-{{ checksum "package-lock.json" }}
+          paths:
+            - ./node_modules
+      - run:
+          name: Create test reports directory
+          command: mkdir /tmp/test-artifacts
+      - store_artifacts:
+          path: ~/repo/space
+      - run:
+          name: Create test reports directory
+          command: mkdir /tmp/test-artifacts
+      - run:
+          name: Setup Code Climate test-reporter
+          command: |
+              # download test reporter as a static binary
+              curl -L https://codeclimate.com/downloads/test-reporter/test-reporter-latest-linux-amd64 > ./cc-test-reporter
+              chmod +x ./cc-test-reporter
+              ./cc-test-reporter before-build
+      - run:
+          name: run space test
+          command: npm test
+      - run:
+          name: Update CodeClimate coverage report
+          command: |
+              ./cc-test-reporter after-build --exit-code $?
